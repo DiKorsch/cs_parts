@@ -24,7 +24,7 @@ function check_dir {
 export OMP_NUM_THREADS=1
 N_RUNS=${N_RUNS:-1}
 
-for i in {1..${N_RUNS}}; do
+for i in $(seq 1 ${N_RUNS}); do
 
 	echo "Run #${i} / ${N_RUNS}"
 
