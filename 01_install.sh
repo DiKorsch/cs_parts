@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 source 00_config.sh
 
-docker build -f Dockerfile2 --tag dikorsch/chainer-cuda101-opencv4.1.1 .
+docker build -f Dockerfile.cupy_cuda11 --tag dikorsch/cupy-cuda110 .
 
-docker-compose build $@ && docker-compose config
+docker compose build $@ && docker compose config test_cupy
+docker compose run test_cupy && echo "Installation Ready"

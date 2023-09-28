@@ -1,6 +1,3 @@
-export USER_ID=$(id -u)
-export GROUP_ID=$(id -g)
-
 export OUTPUT_FOLDER=output_moths
 export DATASETS_FOLDER=datasets
 

@@ -3,26 +3,28 @@ cyvlfeat~=0.5.0
 imageio~=2.3.0
 joblib~=0.14
 matplotlib~=3.0
-numpy~=1.16
+numpy~=1.19
 PyYAML~=5.1
-sacred~=0.7.4
-scikit-image~=0.15
+sacred~=0.8
+scipy~=1.4
 scikit-learn~=0.22
-scipy~=1.3.1
-setuptools~=41.0
-simplejson~=3.14
-six~=1.11.0
-tqdm~=4.31
-pymongo~=3.10
+scikit-image~=0.16
+opencv-python-headless~=4.5
+setuptools
+simplejson
+six
+tqdm
+pymongo
 tabulate
 
-# these should be installed by Docker
-#chainer~=6.5.0
-#cupy-cuda100~=6.5.0
+chainer~=7.8.0
+# cupy should be installed by Docker
+# cupy-cuda100~=6.5.0
 
 # my own packages
-cvargparse~=0.1
-cvdatasets~=0.9
-cvfinetune~=0.5
-chainer_addons~=0.6
-cluster_parts~=0.2
+cvargparse~=0.5
+cvdatasets~=0.12
+cvfinetune~=0.11
+#cvmodelz~=0.3
+cluster_parts>=0.4.1,<1.0.0
+fve_layer~=0.1.0
