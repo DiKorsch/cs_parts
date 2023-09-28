@@ -1,0 +1,35 @@
+BASE_DIR: /home/korsch_data/
+
+DATA_DIR: datasets
+MODEL_DIR: models
+
+############ Existing models
+### weights are used for fine-tuning
+MODELS:
+  cvmodelz.InceptionV3:     &inception
+    folder: inception
+    weights:
+      inat: model.inat.ckpt.npz
+      imagenet: model.imagenet.ckpt.npz
+
+  cvmodelz.ResNet50:     &resnet50
+    folder: resnet
+    weights:
+      imagenet: model.npz
+
+
+
+############ Existing Datasets
+DATASETS:
+  CUB200:         &cub200
+    folder: birds/cub200
+    annotations: "ORIGINAL"
+    annotation_type: FILE_LIST
+    n_classes: 200
+
+PART_TYPES:
+  GLOBAL:         &parts_global
+    feature_suffix: ""
+
+
+PARTS: {}
