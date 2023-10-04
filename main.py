@@ -2,10 +2,11 @@
 if __name__ != '__main__': raise Exception("Do not import me!")  # noqa: E701
 
 import chainer
+import joblib
 import logging
 import numpy as np
-import sys
 import shutil
+import sys
 import typing as T
 import yaml
 
@@ -34,6 +35,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
+from sklearn.preprocessing import MinMaxScaler
 from tqdm.auto import tqdm
 
 
@@ -55,6 +57,7 @@ def parse_args(**kwargs):
 		Arg.flag("--vacuum",
 			help="Set this flag, to delete the output folder after a failed"\
 			"or a quitted (from a debugging session) training"),
+		Arg("--checkpoint"),
 		Arg("--output", default="output"),
 	])
 
@@ -100,7 +103,6 @@ def parse_args(**kwargs):
 		.seed())
 
 	return parser.parse_args(**kwargs)
-
 
 
 def load_data(args, annot, size, prepare):
@@ -208,36 +210,53 @@ def main(args):
 
 	data = load_data(args, annot=annot, size=size, prepare=prepare)
 
-	with chainer.using_config("train", False), chainer.no_backprop_mode():
-		feats_output = output_root / "features.npz"
-		features = extract_features(model, data, batch_size=128, n_jobs=args.n_jobs)
-		np.savez(feats_output, **{
-			"train/features": features["train"].features,
-			"train/labels": features["train"].labels,
-			"test/features": features["test"].features,
-			"test/labels": features["test"].labels,
-		})
-
 	clf_opts = ClfOptions(
 		classifier="svm",
 		key=f"{args.dataset}_{args.parts}_{args.model_type}",
 		shuffle_part_features=args.shuffle_part_features,
-		sparse=False,
+		sparse=True,
 		l2_norm=False,
 		eval_local_parts=False,
-		no_dump=True,
+		no_dump=args.no_dump,
 		scale_features=False,
 		output=args.output,
 	)
+
+	ckpt = Checkpoint.load(args.checkpoint, clf_opts)
+	features = ckpt.features
+
+	if features is None:
+		with chainer.using_config("train", False), chainer.no_backprop_mode():
+			features = extract_features(model, data, batch_size=128, n_jobs=args.n_jobs)
+
+	# eval_clf(features, model)
+	np.savez(output_root / "features.npz", **{
+		"train/features": features["train"].features,
+		"train/labels": features["train"].labels,
+		"test/features": features["test"].features,
+		"test/labels": features["test"].labels,
+	})
 
 
 	# logging.info(f"Training baseline classifier with following options: {clf_opts}")
 	# _ = train_svm(features, clf_opts)
 
-	clf_opts.sparse = True
-	logging.info(f"Training L1-classifier with following options: {clf_opts}")
-	l1_svm, scaler = train_svm(features, clf_opts)
+	l1_svm, scaler = ckpt.svm, ckpt.scaler
+	if l1_svm is None:
+		logging.info(f"Training L1-classifier with following options: {clf_opts}")
+		l1_svm, scaler = train_svm(features, clf_opts)
+	else:
+		X, y = features["train"].features.squeeze(axis=1), features["train"].labels
+		X_val, y_val = features["test"].features.squeeze(axis=1), features["test"].labels
 
+		if scaler is not None:
+			X, X_val = scaler(X), scaler(X_val)
+		train_score = l1_svm.score(X, y)
+		test_score = l1_svm.score(X_val, y_val)
+
+		logging.info("Score of the loaded classifier: " \
+				f"{train_score:.2%} training | {test_score:.2%} test")
+		joblib.dump(l1_svm, output_root / ckpt.svm_fname)
 
 	part_opts = PartOptions(
 		K = args.n_parts,
@@ -437,6 +456,46 @@ def estimate_parts(wrapped_model, opts: PartOptions, *, clf,
 				**kwargs
 			)
 			pipeline.run()
+
+############################
+## Main methods / classes ##
+############################
+
+@dataclass
+class Checkpoint:
+	features: T.Dict[str, Features]
+	svm: object
+	svm_fname: str
+	scaler: T.Callable
+
+	@classmethod
+	def load(cls, ckpt, clf_opts: ClfOptions):
+		ckpt = Path(ckpt)
+		features, svm, scaler = None, None, None
+		svm_fname = None
+
+		_feats = ckpt / "features.npz"
+		if _feats.exists():
+			logging.info(f"Loading features from {_feats}")
+			cont = np.load(_feats)
+
+			features = {subset: Features(features=cont[f"{subset}/features"],
+										labels=cont[f"{subset}/labels"])
+				for subset in ["train", "test"]}
+
+		name = clf_opts.classifier
+		key = clf_opts.key
+		_clf = ckpt / f"clf_{name}_{key}_glob_only_sparse_coefs.npz"
+		if _clf.exists():
+			svm_fname = _clf.name
+			logging.info(f"Loading classifier from {_clf}")
+
+			svm = joblib.load(_clf)
+
+			if clf_opts.scale_features:
+				scaler = MinMaxScaler()
+
+		return cls(features=features, svm=svm, scaler=scaler, svm_fname=svm_fname)
 
 
 MB = 1024**2

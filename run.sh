@@ -17,7 +17,7 @@ OPTS="${OPTS} --label_shift ${LABEL_SHIFT:-1}"
 OPTS="${OPTS} --n_jobs ${N_JOBS:-6}"
 OPTS="${OPTS} --gpu ${GPU:-0}"
 OPTS="${OPTS} --center_crop_on_val"
-OPTS="${OPTS} --no_dump"
+# OPTS="${OPTS} --no_dump"
 OPTS="${OPTS} --output ${OUTPUT_DIR}"
 
 VACUUM=${VACUUM:-1}
