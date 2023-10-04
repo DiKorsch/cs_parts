@@ -5,7 +5,9 @@ import chainer
 import logging
 import numpy as np
 import sys
+import shutil
 import typing as T
+import yaml
 
 from chainer.dataset.convert import concat_examples
 from chainer_addons.models import PrepareType
@@ -27,6 +29,7 @@ from cluster_parts.utils import FeatureComposition
 from cluster_parts.utils import FeatureType
 from cluster_parts.utils import ThresholdType
 
+from bdb import BdbQuit
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
@@ -40,7 +43,7 @@ def add_modules(paths: T.List[str]):
 		sys.path.append(path)
 
 
-def parse_args():
+def parse_args(**kwargs):
 
 	parser = GPUParser([
 		Arg("--load_from", nargs="*",
@@ -49,7 +52,10 @@ def parse_args():
 				"../02_cs_parts_estimation",
 				"../03_feature_extraction",
 			]),
-		Arg("--output", default="output")
+		Arg.flag("--vacuum",
+			help="Set this flag, to delete the output folder after a failed"\
+			"or a quitted (from a debugging session) training"),
+		Arg("--output", default="output"),
 	])
 
 	parser.add_args([
@@ -93,7 +99,7 @@ def parse_args():
 		.debug()\
 		.seed())
 
-	return parser.parse_args()
+	return parser.parse_args(**kwargs)
 
 
 
@@ -154,7 +160,7 @@ def load_model(args, n_classes, model_info, model_root: Path, device):
 		weights_file = Path(f"ft_{args.dataset}", args.weights)
 	else:
 		assert args.pretrained_on in model_info.weights, \
-                f"Weights for \"{args.pretrained_on}\" pre-training were not found!"
+				f"Weights for \"{args.pretrained_on}\" pre-training were not found!"
 		weights_file = Path(model_info.weights[args.pretrained_on])
 
 	# is absolute path
@@ -175,7 +181,13 @@ def load_model(args, n_classes, model_info, model_root: Path, device):
 
 def main(args):
 	add_modules(args.load_from)
-	print(args)
+
+	output_root = Path(args.output)
+	output_root.mkdir(exist_ok=True, parents=True)
+
+	with open(output_root / "args.yml", "w") as f:
+		yaml.dump(args.__dict__, f, sort_keys=True)
+
 	if args.debug:
 		chainer.set_debug(args.debug)
 		logging.warning("DEBUG MODE ON!")
@@ -196,14 +208,16 @@ def main(args):
 
 	data = load_data(args, annot=annot, size=size, prepare=prepare)
 
-
 	with chainer.using_config("train", False), chainer.no_backprop_mode():
+		feats_output = output_root / "features.npz"
 		features = extract_features(model, data, batch_size=128, n_jobs=args.n_jobs)
+		np.savez(feats_output, **{
+			"train/features": features["train"].features,
+			"train/labels": features["train"].labels,
+			"test/features": features["test"].features,
+			"test/labels": features["test"].labels,
+		})
 
-	# l1_svm = None
-	# if args.skip_svm:
-	# 	logging.warning("=== Skipping SVM Training! ===")
-	# else:
 	clf_opts = ClfOptions(
 		classifier="svm",
 		key=f"{args.dataset}_{args.parts}_{args.model_type}",
@@ -245,12 +259,15 @@ def main(args):
 
 
 		keys = ["CS_parts", "noCS_parts"]
-		dest = [Path(args.output) / out / "parts/part_locs.txt" for out in keys]
+		dest = [output_root / out / "parts/part_locs.txt" for out in keys]
+
+		for d in dest:
+			d.parent.mkdir(exist_ok=True, parents=True)
 
 		estimate_parts(model, part_opts, clf=l1_svm, iterator=it,
 			scaler=scaler,
 			prepare=prepare, device=GPU,
-			show_parts_only=True,
+			show_parts_only=False,
 			dest=dest
 		)
 
@@ -423,6 +440,42 @@ def estimate_parts(wrapped_model, opts: PartOptions, *, clf,
 
 
 MB = 1024**2
-chainer.cuda.set_max_workspace_size(1024 * MB)
+GB = 1024 * MB
+chainer.cuda.set_max_workspace_size(1 * GB)
 chainer.config.cv_resize_backend = "cv2"
-main(parse_args())
+
+def _move(outfolder: Path, move_to: str, reason: str):
+	logging.warning(f"Training did not finish properly: {reason=}")
+	dst = outfolder.parent / move_to / outfolder.name
+	if outfolder.exists():
+		dst.parent.mkdir(exist_ok=True, parents=True)
+		logging.warning(f"Moving training logs to {dst}")
+		shutil.move(outfolder, dst)
+	print(outfolder, "->", dst)
+
+def _delete(outfolder: Path, vacuum: bool = False):
+	if vacuum and outfolder.exists():
+		logging.warning(f"Deleting all files from \"{outfolder}\""\
+			"because vacuum=True; remove --vacuum to disable this!")
+		shutil.rmtree(outfolder)
+
+args = parse_args()
+
+try:
+	main(args)
+
+except KeyboardInterrupt:
+	_move(Path(args.output), "interrupted", "KeyboardInterrupt")
+	raise
+
+except BdbQuit:
+	_delete(Path(args.output), args.vacuum)
+	raise
+
+except Exception as e:
+	_move(Path(args.output), "failed", str(e))
+	raise
+
+
+else:
+	logging.info("Finished")
