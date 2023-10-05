@@ -1,5 +1,4 @@
 # third-party packages
-cyvlfeat~=0.5.0
 imageio~=2.3.0
 joblib~=0.14
 matplotlib~=3.0
@@ -10,7 +9,7 @@ scipy~=1.7.1
 scikit-learn~=0.24.2
 scikit-image~=0.18.3
 opencv-python-headless~=4.5
-setuptools~=59.8.0
+setuptools==59.8.0
 simplejson
 six
 tqdm
@@ -19,7 +18,7 @@ tabulate
 
 chainer~=7.8.0
 # cupy should be installed by Docker
-# cupy-cuda100~=6.5.0
+# cupy-cuda110~=7.8.0
 
 # my own packages
 cvargparse~=0.5

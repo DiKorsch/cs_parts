@@ -511,7 +511,7 @@ chainer.cuda.set_max_workspace_size(1 * GB)
 chainer.config.cv_resize_backend = "cv2"
 
 def _move(outfolder: Path, move_to: str, reason: str):
-	logging.warning(f"Training did not finish properly: {reason=}")
+	logging.warning(f"Training did not finish properly: reason={reason}")
 	dst = outfolder.parent / move_to / outfolder.name
 	if outfolder.exists():
 		dst.parent.mkdir(exist_ok=True, parents=True)
