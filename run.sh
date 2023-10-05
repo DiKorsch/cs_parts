@@ -2,7 +2,9 @@
 export DATA=${DATA:-data_info.yml}
 DATASET=${DATASET:-CUB200}
 MODEL_TYPE=${MODEL_TYPE:-cvmodelz.InceptionV3}
-export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2}
+
+# IT HAS TO BE 1! Otherwise kMeans in the child processes does nothing
+export OMP_NUM_THREADS=1
 
 _now=$(date +%Y-%m-%d-%H.%M.%S.%N)
 OUTPUT_PREFIX=${OUTPUT_PREFIX:-"outputs"}

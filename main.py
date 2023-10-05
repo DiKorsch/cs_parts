@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 if __name__ != '__main__': raise Exception("Do not import me!")  # noqa: E701
+# ruff: noqa: E402
 
 import chainer
+import cv2
+cv2.setNumThreads(1)
 import joblib
 import logging
 import numpy as np
@@ -222,8 +225,13 @@ def main(args):
 		output=args.output,
 	)
 
-	ckpt = Checkpoint.load(args.checkpoint, clf_opts)
-	features = ckpt.features
+
+	if args.checkpoint:
+		ckpt = Checkpoint.load(args.checkpoint, clf_opts)
+		features = ckpt.features
+		l1_svm, scaler = ckpt.svm, ckpt.scaler
+	else:
+		features = l1_svm = scaler = None
 
 	if features is None:
 		with chainer.using_config("train", False), chainer.no_backprop_mode():
@@ -241,7 +249,6 @@ def main(args):
 	# logging.info(f"Training baseline classifier with following options: {clf_opts}")
 	# _ = train_svm(features, clf_opts)
 
-	l1_svm, scaler = ckpt.svm, ckpt.scaler
 	if l1_svm is None:
 		logging.info(f"Training L1-classifier with following options: {clf_opts}")
 		l1_svm, scaler = train_svm(features, clf_opts)
@@ -286,7 +293,7 @@ def main(args):
 		estimate_parts(model, part_opts, clf=l1_svm, iterator=it,
 			scaler=scaler,
 			prepare=prepare, device=GPU,
-			show_parts_only=False,
+			show_parts_only=args.show_parts_only,
 			dest=dest
 		)
 
