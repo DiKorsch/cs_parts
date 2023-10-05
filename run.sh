@@ -28,7 +28,7 @@ if [[ $VACUUM == 1 ]]; then
     OPTS="${OPTS} --vacuum"
 fi
 
-${PYTHON:-python} main.py \
+${PYTHON:-python} src/main.py \
     ${DATA} \
     ${DATASET} \
     GLOBAL \

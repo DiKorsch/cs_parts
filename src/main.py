@@ -9,7 +9,6 @@ import joblib
 import logging
 import numpy as np
 import shutil
-import sys
 import typing as T
 import yaml
 
@@ -42,21 +41,9 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm.auto import tqdm
 
 
-def add_modules(paths: T.List[str]):
-	for path in paths:
-		logging.info(f"Adding {path} to search paths")
-		sys.path.append(path)
-
-
 def parse_args(**kwargs):
 
 	parser = GPUParser([
-		Arg("--load_from", nargs="*",
-			default=[
-				"../01_svm_training",
-				"../02_cs_parts_estimation",
-				"../03_feature_extraction",
-			]),
 		Arg.flag("--vacuum",
 			help="Set this flag, to delete the output folder after a failed"\
 			"or a quitted (from a debugging session) training"),
@@ -185,7 +172,6 @@ def load_model(args, n_classes, model_info, model_root: Path, device):
 	return wrapped_model, prepare, size
 
 def main(args):
-	add_modules(args.load_from)
 
 	output_root = Path(args.output)
 	output_root.mkdir(exist_ok=True, parents=True)
