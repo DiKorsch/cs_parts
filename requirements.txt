@@ -18,8 +18,8 @@ tabulate
 
 chainer~=7.8.0
 # cupy should be installed by Docker
-# cupy-cuda110~=7.8.0
-
+# cupy-cuda110~=7.8.0 # < for python<=3.7 only
+# -e git+https://github.com/cupy/cupy.git@3e3635d802eda54a4b8c96d0126c646e97c3d239#egg=cupy # < for other python version
 # my own packages
 cvargparse~=0.5
 cvdatasets~=0.12
