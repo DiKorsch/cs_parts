@@ -10,7 +10,7 @@ scipy~=1.7.1
 scikit-learn~=0.24.2
 scikit-image~=0.18.3
 opencv-python-headless~=4.5
-setuptools
+setuptools~=59.8.0
 simplejson
 six
 tqdm
