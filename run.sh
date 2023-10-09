@@ -28,17 +28,13 @@ if [[ $VACUUM == 1 ]]; then
     OPTS="${OPTS} --vacuum"
 fi
 
+############################################
+### Adding cluster_parts submodule
+############################################
+export PYTHONPATH="${PYTHONPATH}:src/cluster_parts"
+
 ${PYTHON:-python} src/main.py \
     ${DATA} \
     ${DATASET} \
     GLOBAL \
     $OPTS $@
-
-# { # try
-# } || { # catch
-
-#     if [[ ${VACUUM} == 1 ]]; then
-#         echo "Error occured! Removing ${OUTPUT_DIR}"
-#         rm -r ${OUTPUT_DIR}
-#     fi
-# }

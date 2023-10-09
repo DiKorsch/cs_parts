@@ -1,0 +1,3 @@
+[submodule "src/cluster_parts"]
+	path = src/cluster_parts
+	url = git@github.com:cvjena/cluster_parts.git
