@@ -3,6 +3,13 @@
 Code for the paper "[Classification-Specific Parts for Improving Fine-Grained Visual Categorization](https://arxiv.org/abs/1909.07075)"
 
 ## Installation
+Clone the repository and initialize the submodules
+```bash
+git clone git@github.com:cvjena/cs_parts.git
+cd cs_parts
+git submodule init
+git submodule update
+```
 
 
 ### python3.7
